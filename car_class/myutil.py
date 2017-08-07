@@ -1,7 +1,7 @@
 #!/root/anaconda2/bin/python
-import collections
+from collections import defaultdict
 import numpy as np
-import PIL.Image as Image
+import PIL.Image as pil_image
 import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
@@ -206,36 +206,65 @@ def load_img(path, grayscale=False, target_size=None, box=None):
             
 def load_data(image_paths, labels, num_of_class=10, target_size=(227, 227), box=None):
     """
-    Given list of paths, load images as one numpy array of shape
+    Given list of paths, resize and bounding box load images as one numpy array of shape
         (num_images, crop_size, crop_size, channel)
+        box:[top, left, bottom, right]
     :return X: image array
-    "return y: one hot encoded labels
+     return y: one hot encoded labels
     """
     if box:
+        X = np.zeros((len(image_paths), target_size[0],target_size[1], 3))
+        ## google output box :## 0: top 1: left 2 lower 3 right
+        for i,path in enumerate(image_paths):
+            new_box = (box[i][1],box[i][0],box[i][3], box[i][2])
+            X[i, :] = img_to_array(load_img(path, target_size=target_size, box=new_box))
+        y = np_utils.to_categorical(labels, num_of_class)
+        return X, y
+    else:
+        X = np.zeros((len(image_paths), target_size[0],target_size[1], 3))
+        for i,path in enumerate(image_paths):
+            X[i, :] = img_to_array(load_img(path, target_size=target_size))
+        y = np_utils.to_categorical(labels, num_of_class)
+        return X, y
+    
+def load_data_flip(image_paths, labels, num_of_class=10, target_size=(227, 227), box=None):
+    """
+    Given list of paths, resize and bounding box load images as one numpy array of shape
+        (num_images, crop_size, crop_size, channel)
+        box:[top, left, bottom, right]
+    :return X: image array
+     return y: one hot encoded labels
+    """
+    if box.any():
         X = np.zeros((len(image_paths), crop_size[0],crop_size[1], 3))
         ## google output box :## 0: top 1: left 2 lower 3 right
         for i,path in enumerate(image_paths):
             new_box = (box[i][1],box[i][0],box[i][3], box[i][2])
-            X[i, :] = img_to_array(load_img(path, target_size=crop_size, box=new_box))
+            if bool(random.getrandbits(1)):
+                X[i, :] = img_to_array(load_img(path, target_size=target_size, box=new_box))
+            else: 
+                X[i, :] = img_to_array(load_img(path, target_size=target_size, box=new_box))[:,::-1,:]
         y = np_utils.to_categorical(labels, num_of_class)
         return X, y
     else:
         X = np.zeros((len(image_paths), crop_size[0],crop_size[1], 3))
         for i,path in enumerate(image_paths):
-            X[i, :] = img_to_array(load_img(path, target_size=crop_size))
+            if bool(random.getrandbits(1)):
+                X[i, :] = img_to_array(load_img(path, target_size=target_size))
+            else: 
+                X[i, :] = img_to_array(load_img(path, target_size=target_size))[:,::-1,:]
         y = np_utils.to_categorical(labels, num_of_class)
         return X, y
     
-def judge_box(left, right, left_t=0.5, right_t=0.5):
+def judge_box(left, right, left_t, right_t):
     if left < left_t and right > right_t:
         return True
 
-def load_box(path='./start/bba/bb.npy',x_threshold=0.5,x_threshold2=0.5):
+def load_box(path,x_threshold=0.51,x_threshold2=0.51):
     if x_threshold > x_threshold2:
         print 'threshold error'
     with open(path) as f:
-        bb_list = np.load(f)
-    bb_list = bb_list.item()
+        bb_list = np.load(f).item()
     result = defaultdict(list)
     ## delete left > 0.5 right border < 0.5
     ## 0: top 1: left 2 lower 3 right
@@ -244,7 +273,8 @@ def load_box(path='./start/bba/bb.npy',x_threshold=0.5,x_threshold2=0.5):
             result[k] = bb_list[k]
             continue
         for bb_box in bb_list[k]:
-            if judge(left=bb_box[1], right=bb_box[3], left_t=x_threshold, right_t=x_threshold2):
+            if judge_box(left=bb_box[1], right=bb_box[3], left_t=x_threshold, right_t=x_threshold2):
                 result[k].append(bb_box)
     return result
+
 

@@ -236,7 +236,7 @@ def load_data_flip(image_paths, labels, num_of_class=10, target_size=(227, 227),
      return y: one hot encoded labels
     """
     if box.any():
-        X = np.zeros((len(image_paths), crop_size[0],crop_size[1], 3))
+        X = np.zeros((len(image_paths), target_size[0],target_size[1], 3))
         ## google output box :## 0: top 1: left 2 lower 3 right
         for i,path in enumerate(image_paths):
             new_box = (box[i][1],box[i][0],box[i][3], box[i][2])
@@ -247,7 +247,7 @@ def load_data_flip(image_paths, labels, num_of_class=10, target_size=(227, 227),
         y = np_utils.to_categorical(labels, num_of_class)
         return X, y
     else:
-        X = np.zeros((len(image_paths), crop_size[0],crop_size[1], 3))
+        X = np.zeros((len(image_paths), target_size[0],target_size[1], 3))
         for i,path in enumerate(image_paths):
             if bool(random.getrandbits(1)):
                 X[i, :] = img_to_array(load_img(path, target_size=target_size))
